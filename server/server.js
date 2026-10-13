@@ -1,0 +1,33 @@
+
+require("dotenv").config();
+
+const express = require("express");
+const connectDB = require("./src/config/db");
+const activityRoutes = require("./src/routes/activityRoutes");
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware: parse incoming JSON request bodies
+app.use(express.json());
+
+// Health-check endpoint
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "CineFile API is running!",
+  });
+});
+
+app.use("/api/activities", activityRoutes);
+
+// Connect to MongoDB before starting the server
+async function startServer() {
+  await connectDB();
+
+  app.listen(PORT, () => {
+    console.log(`CineFile server running on port ${PORT}`);
+  });
+}
+
+startServer();
