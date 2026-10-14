@@ -1,44 +1,380 @@
 
 const express = require("express");
+const mongoose = require("mongoose");
 const ActivityLog = require("../models/ActivityLog");
+const protect = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// POST /api/activities
+// Protect every route defined in this router.
+router.use(protect);
+
+// CREATE an activity
 router.post("/", async (req, res) => {
   try {
-    const activity = await ActivityLog.create(req.body);
+    const {
+      mediaId,
+      mediaType,
+      title,
+      status,
+      rating,
+      review,
+      watchedAt,
+    } = req.body;
 
-    res.status(201).json({
+    // Validate required fields.
+    if (
+      !Number.isInteger(mediaId) ||
+      mediaId <= 0 ||
+      typeof title !== "string" ||
+      !title.trim() ||
+      !["movie", "tv"].includes(mediaType)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid mediaId, mediaType and title are required.",
+      });
+    }
+
+    // Validate optional fields.
+    if (
+      status !== undefined &&
+      !["watched", "watching", "plan_to_watch"].includes(status)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid activity status.",
+      });
+    }
+
+    if (
+      rating !== undefined &&
+      rating !== null &&
+      (
+        typeof rating !== "number" ||
+        !Number.isFinite(rating) ||
+        rating < 0 ||
+        rating > 10
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Rating must be a number between 0 and 10.",
+      });
+    }
+
+    if (
+      review !== undefined &&
+      (
+        typeof review !== "string" ||
+        review.length > 2000
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Review must be text with at most 2000 characters.",
+      });
+    }
+
+    let parsedWatchedAt;
+
+    if (watchedAt !== undefined && watchedAt !== null) {
+      if (
+        typeof watchedAt !== "string" ||
+        Number.isNaN(Date.parse(watchedAt))
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "watchedAt must be a valid date.",
+        });
+      }
+
+      parsedWatchedAt = new Date(watchedAt);
+    }
+
+    // Never accept userId from the request body.
+    const activity = await ActivityLog.create({
+      userId: req.user.id,
+      mediaId,
+      mediaType,
+      title: title.trim(),
+      ...(status !== undefined && { status }),
+      ...(rating !== undefined && { rating }),
+      ...(review !== undefined && { review }),
+      ...(watchedAt !== undefined && { watchedAt: parsedWatchedAt }),
+    });
+
+    return res.status(201).json({
       success: true,
       data: activity,
     });
   } catch (error) {
-    res.status(400).json({
+    console.error("Create activity error:", error.message);
+
+    return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Unable to create activity.",
     });
   }
 });
 
-// GET /api/activities
+// READ all activities belonging to the authenticated user.
 router.get("/", async (req, res) => {
   try {
-    const activities = await ActivityLog.find().sort({
-      createdAt: -1,
-    });
+    const activities = await ActivityLog.find({
+      userId: req.user.id,
+    }).sort({ createdAt: -1 });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: activities.length,
       data: activities,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Get activities error:", error.message);
+
+    return res.status(500).json({
       success: false,
-      message: "Failed to retrieve activities",
+      message: "Unable to retrieve activities.",
+    });
+  }
+});
+
+// READ one activity belonging to the authenticated user.
+router.get("/:id", async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid activity ID.",
+      });
+    }
+
+    const activity = await ActivityLog.findOne({
+      _id: req.params.id,
+      userId: req.user.id,
+    });
+
+    if (!activity) {
+      return res.status(404).json({
+        success: false,
+        message: "Activity not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: activity,
+    });
+  } catch (error) {
+    console.error("Get activity error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve activity.",
+    });
+  }
+});
+
+// UPDATE one activity belonging to the authenticated user.
+router.patch("/:id", async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid activity ID.",
+      });
+    }
+
+    const allowedFields = ["status", "rating", "review", "watchedAt"];
+    const updates = {};
+
+    for (const field of allowedFields) {
+      if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid fields provided for update.",
+      });
+    }
+
+    if (
+      updates.status !== undefined &&
+      !["watched", "watching", "plan_to_watch"].includes(updates.status)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid activity status.",
+      });
+    }
+
+    if (
+      updates.rating !== undefined &&
+      updates.rating !== null &&
+      (
+        typeof updates.rating !== "number" ||
+        !Number.isFinite(updates.rating) ||
+        updates.rating < 0 ||
+        updates.rating > 10
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Rating must be a number between 0 and 10.",
+      });
+    }
+
+    if (
+      updates.review !== undefined &&
+      (
+        typeof updates.review !== "string" ||
+        updates.review.length > 2000
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Review must be text with at most 2000 characters.",
+      });
+    }
+
+    if (updates.watchedAt !== undefined) {
+      if (updates.watchedAt === null) {
+        // Explicitly allow clearing the watched date.
+      } else if (
+        typeof updates.watchedAt !== "string" ||
+        Number.isNaN(Date.parse(updates.watchedAt))
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "watchedAt must be a valid date or null.",
+        });
+      } else {
+        updates.watchedAt = new Date(updates.watchedAt);
+      }
+    }
+
+    if (updates.review !== undefined) {
+      updates.review = updates.review.trim();
+    }
+
+    const activity = await ActivityLog.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        userId: req.user.id,
+      },
+      { $set: updates },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!activity) {
+      return res.status(404).json({
+        success: false,
+        message: "Activity not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: activity,
+    });
+  } catch (error) {
+    console.error("Update activity error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to update activity.",
+    });
+  }
+});
+
+// DELETE one activity belonging to the authenticated user.
+router.delete("/:id", async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid activity ID.",
+      });
+    }
+
+    const activity = await ActivityLog.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.user.id,
+    });
+
+    if (!activity) {
+      return res.status(404).json({
+        success: false,
+        message: "Activity not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Activity deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Delete activity error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to delete activity.",
     });
   }
 });
 
 module.exports = router;
+
+
+//---------------------------------------------
+
+// const express = require("express");
+// const ActivityLog = require("../models/ActivityLog");
+
+// const router = express.Router();
+
+// // POST /api/activities
+// router.post("/", async (req, res) => {
+//   try {
+//     const activity = await ActivityLog.create(req.body);
+
+//     res.status(201).json({
+//       success: true,
+//       data: activity,
+//     });
+//   } catch (error) {
+//     res.status(400).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// });
+
+// // GET /api/activities
+// router.get("/", async (req, res) => {
+//   try {
+//     const activities = await ActivityLog.find().sort({
+//       createdAt: -1,
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       count: activities.length,
+//       data: activities,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to retrieve activities",
+//     });
+//   }
+// });
+
+// module.exports = router;

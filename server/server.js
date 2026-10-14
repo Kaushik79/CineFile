@@ -4,6 +4,8 @@ require("dotenv").config();
 const express = require("express");
 const connectDB = require("./src/config/db");
 const activityRoutes = require("./src/routes/activityRoutes");
+const authRoutes = require("./src/routes/authRoutes");
+const protect = require("./src/middleware/authMiddleware");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -19,7 +21,15 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.get("/api/auth/me", protect, (req, res) => {
+  res.status(200).json({
+    success: true,
+    userId: req.user.id,
+  });
+});
+
 app.use("/api/activities", activityRoutes);
+app.use("/api/auth", authRoutes);
 
 // Connect to MongoDB before starting the server
 async function startServer() {
