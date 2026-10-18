@@ -6,6 +6,7 @@ const connectDB = require("./src/config/db");
 const activityRoutes = require("./src/routes/activityRoutes");
 const authRoutes = require("./src/routes/authRoutes");
 const protect = require("./src/middleware/authMiddleware");
+const movieRoutes = require("./src/routes/movieRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -30,6 +31,7 @@ app.get("/api/auth/me", protect, (req, res) => {
 
 app.use("/api/activities", activityRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/movies", movieRoutes);
 
 // Connect to MongoDB before starting the server
 async function startServer() {
