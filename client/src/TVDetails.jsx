@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import axios from "axios";
+import api from "./api";
 
 function TVDetails() {
   const { id } = useParams();
@@ -9,6 +9,9 @@ function TVDetails() {
   const [show, setShow] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [message, setMessage] = useState("");
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     async function fetchShow() {
@@ -16,10 +19,7 @@ function TVDetails() {
         setLoading(true);
         setError("");
 
-        const response = await axios.get(
-          `/api/movies/tv/${id}`
-        );
-
+        const response = await api.get(`/movies/tv/${id}`);
         setShow(response.data.data);
       } catch (error) {
         setError(
@@ -33,6 +33,32 @@ function TVDetails() {
 
     fetchShow();
   }, [id]);
+
+  async function addToWatchlist() {
+    if (!show || adding) return;
+
+    try {
+      setAdding(true);
+      setMessage("");
+      setActionError("");
+
+      await api.post("/activities", {
+        mediaId: show.id,
+        mediaType: "tv",
+        title: show.name,
+        status: "plan_to_watch",
+      });
+
+      setMessage(`${show.name} added to your watchlist!`);
+    } catch (error) {
+      setActionError(
+        error.response?.data?.message ||
+          "Unable to add this show to your watchlist."
+      );
+    } finally {
+      setAdding(false);
+    }
+  }
 
   if (loading) {
     return <main className="app">Loading TV show...</main>;
@@ -99,14 +125,25 @@ function TVDetails() {
           <p>
             <strong>Genres:</strong>{" "}
             {show.genres?.length
-              ? show.genres
-                  .map((genre) => genre.name)
-                  .join(", ")
+              ? show.genres.map((genre) => genre.name).join(", ")
               : "Not available"}
           </p>
 
           <h2>Overview</h2>
           <p>{show.overview || "No overview available."}</p>
+
+          <button
+            type="button"
+            onClick={addToWatchlist}
+            disabled={adding}
+          >
+            {adding ? "Adding..." : "+ Add to Watchlist"}
+          </button>
+
+          {message && <p role="status">{message}</p>}
+          {actionError && (
+            <p className="error" role="alert">{actionError}</p>
+          )}
         </div>
       </section>
     </main>

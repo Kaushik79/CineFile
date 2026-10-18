@@ -36,6 +36,7 @@ function Navbar() {
         {token ? (
           <>
             <Link to="/activities">My Watchlist</Link>
+            <Link to="/analytics">Analytics</Link>
             <span className="nav-user">
               {user?.name || "User"}
             </span>

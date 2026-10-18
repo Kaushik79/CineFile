@@ -118,6 +118,100 @@ router.post("/", async (req, res) => {
   }
 });
 
+
+/* GET analytics for the authenticated user */
+router.get("/analytics", async (req, res) => {
+  try {
+    const results = await ActivityLog.aggregate([
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(req.user.id),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+
+          totalActivities: { $sum: 1 },
+
+          watched: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "watched"] }, 1, 0],
+            },
+          },
+
+          watching: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "watching"] }, 1, 0],
+            },
+          },
+
+          planToWatch: {
+            $sum: {
+              $cond: [
+                { $eq: ["$status", "plan_to_watch"] },
+                1,
+                0,
+              ],
+            },
+          },
+
+          movies: {
+            $sum: {
+              $cond: [{ $eq: ["$mediaType", "movie"] }, 1, 0],
+            },
+          },
+
+          tvShows: {
+            $sum: {
+              $cond: [{ $eq: ["$mediaType", "tv"] }, 1, 0],
+            },
+          },
+
+          averageRating: { $avg: "$rating" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalActivities: 1,
+          watched: 1,
+          watching: 1,
+          planToWatch: 1,
+          movies: 1,
+          tvShows: 1,
+          averageRating: {
+            $round: [{ $ifNull: ["$averageRating", 0] }, 2],
+          },
+        },
+      },
+    ]);
+
+    const analytics = results[0] || {
+      totalActivities: 0,
+      watched: 0,
+      watching: 0,
+      planToWatch: 0,
+      movies: 0,
+      tvShows: 0,
+      averageRating: 0,
+    };
+
+    return res.status(200).json({
+      success: true,
+      data: analytics,
+    });
+  } catch (error) {
+    console.error("Get analytics error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve analytics.",
+    });
+  }
+});
+
+
 // READ all activities belonging to the authenticated user.
 router.get("/", async (req, res) => {
   try {
@@ -139,6 +233,94 @@ router.get("/", async (req, res) => {
     });
   }
 });
+
+
+/* GET monthly activity trends for the authenticated user */
+router.get("/analytics/monthly", async (req, res) => {
+  try {
+    const results = await ActivityLog.aggregate([
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(req.user.id),
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+            mediaType: "$mediaType",
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: {
+          "_id.year": 1,
+          "_id.month": 1,
+        },
+      },
+    ]);
+
+    // Prepare the last 6 calendar months, including months with no activity.
+    const now = new Date();
+    const monthlyData = [];
+
+    for (let offset = 5; offset >= 0; offset--) {
+      const date = new Date(
+        now.getFullYear(),
+        now.getMonth() - offset,
+        1
+      );
+
+      monthlyData.push({
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+        monthLabel: date.toLocaleString("en-US", {
+          month: "short",
+          year: "2-digit",
+        }),
+        movies: 0,
+        tvShows: 0,
+      });
+    }
+
+    for (const result of results) {
+      const matchingMonth = monthlyData.find(
+        (item) =>
+          item.year === result._id.year &&
+          item.month === result._id.month
+      );
+
+      if (matchingMonth) {
+        if (result._id.mediaType === "movie") {
+          matchingMonth.movies = result.count;
+        } else if (result._id.mediaType === "tv") {
+          matchingMonth.tvShows = result.count;
+        }
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: monthlyData.map(
+        ({ monthLabel, movies, tvShows }) => ({
+          month: monthLabel,
+          movies,
+          tvShows,
+        })
+      ),
+    });
+  } catch (error) {
+    console.error("Monthly analytics error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve monthly analytics.",
+    });
+  }
+});
+
 
 // READ one activity belonging to the authenticated user.
 router.get("/:id", async (req, res) => {

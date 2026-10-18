@@ -9,6 +9,7 @@ import Register from "./Register";
 import Activities from "./Activities";
 import Navbar from "./Navbar";
 import TVDetails from "./TVDetails";
+import Analytics from "./Analytics";
 
 import {
   BrowserRouter,
@@ -321,6 +322,7 @@ function App() {
           element={<MovieDetails />}
         />
         <Route path="/tv/:id" element={<TVDetails />} />
+        <Route path="/analytics" element={<Analytics />} />
       </Routes>
     </BrowserRouter>
   );
