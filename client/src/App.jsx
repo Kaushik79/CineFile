@@ -10,6 +10,7 @@ import Activities from "./Activities";
 import Navbar from "./Navbar";
 import TVDetails from "./TVDetails";
 import Analytics from "./Analytics";
+import ReleaseCalendar from "./ReleaseCalendar";
 
 import {
   BrowserRouter,
@@ -323,6 +324,7 @@ function App() {
         />
         <Route path="/tv/:id" element={<TVDetails />} />
         <Route path="/analytics" element={<Analytics />} />
+        <Route path="/calendar" element={<ReleaseCalendar />} />
       </Routes>
     </BrowserRouter>
   );

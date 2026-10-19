@@ -1,0 +1,250 @@
+
+.release-calendar-page {
+  width: min(1200px, 94%);
+  margin: 0 auto;
+  padding: 32px 0 48px;
+  color: #f3f4f6;
+}
+
+.calendar-header,
+.calendar-month-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.calendar-header {
+  margin-bottom: 24px;
+}
+
+.calendar-header h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+}
+
+.calendar-header p {
+  margin: 0;
+  color: #a1a1aa;
+}
+
+.calendar-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.calendar-filter select,
+.calendar-month-header button {
+  background: #27272a;
+  color: #f4f4f5;
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.calendar-panel,
+.selected-releases {
+  background: #18181b;
+  border: 1px solid #303036;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.calendar-month-header {
+  margin-bottom: 20px;
+}
+
+.calendar-month-header h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  text-align: center;
+}
+
+.calendar-month-header button {
+  cursor: pointer;
+  min-width: 44px;
+  font-size: 1.2rem;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.calendar-weekday {
+  text-align: center;
+  padding: 10px 2px;
+  color: #a1a1aa;
+  font-size: 0.85rem;
+}
+
+.calendar-day {
+  min-height: 82px;
+  min-width: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  background: #202024;
+  color: #f4f4f5;
+  border: 1px solid #34343a;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.calendar-day:hover {
+  border-color: #8b5cf6;
+}
+
+.calendar-day-selected {
+  border: 2px solid #a78bfa;
+  background: #312e42;
+}
+
+.calendar-day-empty {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+}
+
+.calendar-day-count {
+  color: #c4b5fd;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.selected-releases > h2 {
+  margin-top: 0;
+  font-size: 1.3rem;
+}
+
+.release-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.release-card {
+  display: flex;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid #34343a;
+  border-radius: 12px;
+  background: #202024;
+  min-width: 0;
+}
+
+.release-card img,
+.release-poster-placeholder {
+  width: 100px;
+  min-width: 100px;
+  height: 150px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.release-poster-placeholder {
+  display: grid;
+  place-items: center;
+  background: #303036;
+  color: #a1a1aa;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.release-card-info {
+  min-width: 0;
+}
+
+.release-media-type {
+  color: #c4b5fd;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.release-card-info h3 {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+
+.release-card-info p {
+  color: #a1a1aa;
+  font-size: 0.9rem;
+  margin: 8px 0;
+}
+
+.release-card-info a {
+  display: inline-block;
+  margin-top: 6px;
+  color: #c4b5fd;
+  text-decoration: none;
+}
+
+.calendar-message {
+  color: #a1a1aa;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.calendar-error {
+  color: #fca5a5;
+}
+
+@media (max-width: 760px) {
+  .calendar-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .release-list {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-day {
+    min-height: 65px;
+    padding: 5px;
+  }
+
+  .calendar-day-count {
+    font-size: 0.65rem;
+  }
+
+  .calendar-panel {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .calendar-grid {
+    gap: 3px;
+  }
+
+  .calendar-day {
+    min-height: 56px;
+    gap: 5px;
+    font-size: 0.8rem;
+  }
+
+  .calendar-weekday {
+    font-size: 0.7rem;
+  }
+
+  .release-card {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .release-card img,
+  .release-poster-placeholder {
+    width: 80px;
+    min-width: 80px;
+    height: 120px;
+  }
+}

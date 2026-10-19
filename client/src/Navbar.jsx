@@ -37,6 +37,7 @@ function Navbar() {
           <>
             <Link to="/activities">My Watchlist</Link>
             <Link to="/analytics">Analytics</Link>
+            <Link to="/calendar">Release Calendar</Link>
             <span className="nav-user">
               {user?.name || "User"}
             </span>

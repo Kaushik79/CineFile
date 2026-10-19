@@ -36,6 +36,61 @@ function getImageUrl(path, baseUrl) {
   return path ? `${baseUrl}${path}` : null;
 }
 
+//a date validation helper
+function getDateRange(req, res) {
+  const { startDate, endDate } = req.query;
+
+  const isValidDate = (value) => {
+    if (
+      typeof value !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(value)
+    ) {
+      return false;
+    }
+
+    const date = new Date(`${value}T00:00:00.000Z`);
+
+    return (
+      !Number.isNaN(date.getTime()) &&
+      date.toISOString().slice(0, 10) === value
+    );
+  };
+
+  if (!isValidDate(startDate) || !isValidDate(endDate)) {
+    res.status(400).json({
+      success: false,
+      message: "Valid startDate and endDate are required (YYYY-MM-DD).",
+    });
+
+    return null;
+  }
+
+  if (startDate > endDate) {
+    res.status(400).json({
+      success: false,
+      message: "startDate must be before or equal to endDate.",
+    });
+
+    return null;
+  }
+
+  const start = new Date(`${startDate}T00:00:00.000Z`);
+  const end = new Date(`${endDate}T00:00:00.000Z`);
+  const days = (end - start) / 86400000;
+
+  if (days > 92) {
+    res.status(400).json({
+      success: false,
+      message: "Date range cannot exceed 93 calendar days.",
+    });
+
+    return null;
+  }
+
+  return { startDate, endDate };
+}
+
+
 // Send a request to TMDB without exposing the token.
 async function fetchTMDB(url, token) {
   return fetch(url, {
@@ -74,6 +129,121 @@ function handleTMDBError(res, error, label) {
     message: "Unable to contact the movie service.",
   });
 }
+
+
+/* GET /api/movies/calendar/movies?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD */
+router.get("/calendar/movies", async (req, res) => {
+  try {
+    const range = getDateRange(req, res);
+    if (!range) return;
+
+    const token = process.env.TMDB_BEARER_TOKEN;
+
+    if (!token) {
+      return res.status(500).json({
+        success: false,
+        message: "Movie service is not configured.",
+      });
+    }
+
+    const url = new URL(`${TMDB_BASE_URL}/discover/movie`);
+
+    url.searchParams.set("primary_release_date.gte", range.startDate);
+    url.searchParams.set("primary_release_date.lte", range.endDate);
+    url.searchParams.set("region", "IN");
+    url.searchParams.set("sort_by", "primary_release_date.asc");
+    url.searchParams.set("include_adult", "false");
+    url.searchParams.set("language", "en-US");
+    url.searchParams.set("page", "1");
+
+    const tmdbResponse = await fetchTMDB(url, token);
+
+    if (!tmdbResponse.ok) {
+      return res.status(
+        tmdbResponse.status === 429 ? 503 : 502
+      ).json({
+        success: false,
+        message: "Unable to retrieve movie releases.",
+      });
+    }
+
+    const data = await tmdbResponse.json();
+
+    const movies = data.results.map((movie) => ({
+      id: movie.id,
+      mediaType: "movie",
+      title: movie.title,
+      overview: movie.overview,
+      releaseDate: movie.release_date,
+      posterUrl: getImageUrl(movie.poster_path, TMDB_IMAGE_BASE_URL),
+      rating: movie.vote_average,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: movies,
+    });
+  } catch (error) {
+    return handleTMDBError(res, error, "Movie calendar error");
+  }
+});
+
+
+/* GET /api/movies/calendar/tv?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD */
+router.get("/calendar/tv", async (req, res) => {
+  try {
+    const range = getDateRange(req, res);
+    if (!range) return;
+
+    const token = process.env.TMDB_BEARER_TOKEN;
+
+    if (!token) {
+      return res.status(500).json({
+        success: false,
+        message: "TV service is not configured.",
+      });
+    }
+
+    const url = new URL(`${TMDB_BASE_URL}/discover/tv`);
+
+    url.searchParams.set("first_air_date.gte", range.startDate);
+    url.searchParams.set("first_air_date.lte", range.endDate);
+    url.searchParams.set("sort_by", "first_air_date.asc");
+    url.searchParams.set("language", "en-US");
+    url.searchParams.set("page", "1");
+
+    const tmdbResponse = await fetchTMDB(url, token);
+
+    if (!tmdbResponse.ok) {
+      return res.status(
+        tmdbResponse.status === 429 ? 503 : 502
+      ).json({
+        success: false,
+        message: "Unable to retrieve TV releases.",
+      });
+    }
+
+    const data = await tmdbResponse.json();
+
+    const shows = data.results.map((show) => ({
+      id: show.id,
+      mediaType: "tv",
+      title: show.name,
+      overview: show.overview,
+      releaseDate: show.first_air_date,
+      posterUrl: getImageUrl(show.poster_path, TMDB_IMAGE_BASE_URL),
+      rating: show.vote_average,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: shows,
+    });
+  } catch (error) {
+    return handleTMDBError(res, error, "TV calendar error");
+  }
+});
+
 
 // GET /api/movies/search?query=Interstellar&page=1
 router.get("/search", async (req, res) => {
